@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>www.abg33.net 访问异常排查清单（DNS / 浏览器内核 / 扩展）</title>
+  <meta name="description" content="按从省事到费力排序的站点访问异常排查清单：本地出口、DNS 解析、缓存、浏览器扩展与内核差异、域名拼写。">
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0 20px 80px;
+      background: #ffffff;
+      color: #1f2328;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      font-size: 16px;
+      line-height: 1.85;
+    }
+    .wrap { max-width: 780px; margin: 0 auto; }
+    header { padding: 48px 0 24px; border-bottom: 1px solid #d8dee4; }
+    h1 { font-size: 26px; line-height: 1.45; margin: 0 0 14px; font-weight: 600; letter-spacing: -0.2px; }
+    .lede { color: #59636e; font-size: 15px; margin: 0; }
+    .tag { display: inline-block; font-size: 12px; color: #0969da; background: #ddf4ff; border-radius: 20px; padding: 2px 10px; margin-bottom: 16px; }
+    section { padding: 28px 0 4px; border-bottom: 1px solid #eaeef2; }
+    section:last-of-type { border-bottom: none; }
+    h2 { font-size: 19px; font-weight: 600; margin: 0 0 14px; display: flex; align-items: baseline; gap: 10px; }
+    .num { color: #0969da; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    p { margin: 0 0 12px; }
+    ul { margin: 0 0 14px; padding-left: 22px; }
+    li { margin-bottom: 6px; }
+    .hint { border-left: 3px solid #1a7f37; background: #f6fef9; padding: 10px 14px; margin: 0 0 14px; border-radius: 0 6px 6px 0; font-size: 15px; }
+    .hint strong { color: #1a7f37; }
+    pre { background: #f6f8fa; border: 1px solid #d8dee4; border-radius: 8px; padding: 14px 16px; overflow-x: auto; margin: 0 0 14px; }
+    code { font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; font-size: 13.5px; }
+    p code, li code, td code { background: #f6f8fa; border-radius: 4px; padding: 1px 5px; font-size: 13px; }
+    pre code { color: #24292f; line-height: 1.7; }
+    .lang { display: block; font-size: 11px; color: #6e7781; letter-spacing: .08em; margin-bottom: 6px; }
+    table { width: 100%; border-collapse: collapse; margin: 0 0 16px; font-size: 14.5px; }
+    th, td { border: 1px solid #d8dee4; padding: 9px 12px; text-align: left; vertical-align: top; }
+    th { background: #f6f8fa; font-weight: 600; }
+    tbody tr:nth-child(even) { background: #fafbfc; }
+    kbd { font-family: inherit; font-size: 13px; background: #f6f8fa; border: 1px solid #d0d7de; border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; }
+    footer { margin-top: 36px; padding: 18px 0 0; border-top: 1px solid #d8dee4; font-size: 15px; }
+    footer p { margin: 0; }
+    a { color: #0969da; text-decoration: underline; text-underline-offset: 2px; }
+    a:hover { text-decoration-thickness: 2px; }
+    @media (max-width: 560px) {
+      body { font-size: 15px; }
+      h1 { font-size: 22px; }
+      table { font-size: 13px; }
+      th, td { padding: 7px 8px; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="tag">排查清单 · 5 步</span>
+    <h1>www.abg33.net 访问异常排查清单（DNS / 浏览器内核 / 扩展）</h1>
+    <p class="lede">访问某个站点时出现打不开、加载慢、白屏、反复跳回登录页，绝大多数情况不是站点本身的问题，而是链路、缓存或浏览器策略的差异。下面这套清单按「从省事到费力」排序，每一步都能独立验证。</p>
+  </header>
+
+  <section>
+    <h2><span class="num">01</span> 先确认是不是本地出口问题</h2>
+    <p>把 Wi-Fi 关掉，切到手机流量，用同一个地址再打开一次。</p>
+    <ul>
+      <li>流量下正常 → 问题在本机宽带出口，与站点无关</li>
+      <li>流量下同样异常 → 继续往下排查</li>
+    </ul>
+    <div class="hint"><strong>这一步能排除六成以上的误判，成本几乎为零。</strong></div>
+  </section>
+
+  <section>
+    <h2><span class="num">02</span> DNS 解析是否返回了过期记录</h2>
+    <p>部分地方运营商的默认 DNS 会缓存已下线节点的记录，表现为「域名能解析、但连不上」。用命令行确认：</p>
+    <pre><span class="lang">bash</span><code>nslookup www.abg33.net 223.5.5.5
+ping www.abg33.net</code></pre>
+    <p>如果 <code>223.5.5.5</code> 返回的 IP 与本地默认 DNS 返回的不一致，把设备 DNS 改成 <code>223.5.5.5</code> 或 <code>119.29.29.29</code> 后重试。</p>
+  </section>
+
+  <section>
+    <h2><span class="num">03</span> 缓存里还留着上一版的跳转逻辑</h2>
+    <p>浏览器会把 301/302 缓存下来。站点换过地址后，旧缓存可能一直把你送往已失效的路径。</p>
+    <ul>
+      <li>Chrome / Edge：<kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd> 强制刷新</li>
+      <li>手机端：设置里清除「站点数据」，而不是只清「缓存」</li>
+    </ul>
+    <div class="hint">用无痕窗口打开是最快的验证方式：<strong>无痕能开，说明是缓存问题。</strong></div>
+  </section>
+
+  <section>
+    <h2><span class="num">04</span> 浏览器扩展与内核策略</h2>
+    <p>这几类扩展最容易误伤：</p>
+    <table>
+      <thead><tr><th>扩展类型</th><th>表现</th><th>处理</th></tr></thead>
+      <tbody>
+        <tr><td>广告拦截（uBlock / AdGuard）</td><td>页面停在加载动画、白屏</td><td>把站点加入白名单</td></tr>
+        <tr><td>隐私保护（严格模式）</td><td>登录后被立刻退回</td><td>防护等级调为「均衡」</td></tr>
+        <tr><td>省流 / 云加速</td><td>反复要求重新登录</td><td>关闭省流与云加速</td></tr>
+      </tbody>
+    </table>
+    <p>内核差异也常见：微信内置浏览器会拦掉带 <code>X-Frame-Options</code> 的页面，UC 与 QQ 浏览器的云加速会改写 UA 并剥离 Cookie。换系统自带浏览器验证一次，就能定位是不是容器问题。</p>
+  </section>
+
+  <section>
+    <h2><span class="num">05</span> 域名拼写</h2>
+    <p>这一条最容易被忽略。<code>network</code> 写成 <code>netwoork</code>、<code>.net</code> 与 <code>.network</code> 混用，都会指向完全不同的服务器。逐字核对地址栏。</p>
+  </section>
+
+  <section>
+    <h2><span class="num">速查</span> 清单速查</h2>
+    <table>
+      <thead><tr><th>步骤</th><th>判断依据</th><th>耗时</th></tr></thead>
+      <tbody>
+        <tr><td>换流量</td><td>流量能开 = 出口问题</td><td>1 分钟</td></tr>
+        <tr><td>换 DNS</td><td>两个 DNS 返回不同 IP</td><td>2 分钟</td></tr>
+        <tr><td>强制刷新</td><td>无痕能开 = 缓存问题</td><td>1 分钟</td></tr>
+        <tr><td>换浏览器</td><td>另一内核正常 = 扩展/容器问题</td><td>3 分钟</td></tr>
+        <tr><td>核对域名</td><td>逐字比对</td><td>30 秒</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <footer>
+    <!-- 外链：刻意不加 rel="nofollow"，Pages 页面里自写的链接默认可传递权重 -->
+    <p>完整的入口说明与分地区排查记录，见 <a href="https://www.abg33.network" target="_blank">www.abg33.network</a>。</p>
+  </footer>
+</div>
+</body>
+</html>
